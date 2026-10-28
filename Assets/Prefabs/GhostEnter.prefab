@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 5955143780085555912}
   - component: {fileID: 2502868697491583117}
   - component: {fileID: 2621798964664061986}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: GhostEnter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
