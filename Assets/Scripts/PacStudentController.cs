@@ -2,36 +2,35 @@ using UnityEngine;
 
 public class PacStudentController : MonoBehaviour
 {
-    [Header("Movement")]
-    [SerializeField] private float moveSpeed = 5f;
+    [Header("Movement Settings")]
+    [SerializeField] private float moveSpeed = 5f; // 每秒 5 格
 
     [Header("References")]
     [SerializeField] private Animator animator;
     [SerializeField] private AudioSource moveAudioSource;
-    [SerializeField] private AudioSource pelletAudioSource; // 吃豆音效（循环）
     [SerializeField] private ParticleSystem dustEffect;
+    [SerializeField] private LayerMask wallLayer; // 在 Inspector 里勾选 Wall
 
-    [Header("Level Bounds")]
-    [SerializeField] private Vector2Int minGridPos;
-    [SerializeField] private Vector2Int maxGridPos;
-    [SerializeField] private LayerMask wallLayer;
+    [Header("Grid Bounds")]
+    [SerializeField] private Vector2Int minGridPos = new Vector2Int(0, -28);
+    [SerializeField] private Vector2Int maxGridPos = new Vector2Int(27, 0);
 
+    // 状态变量
     private Vector3 startPos;
     private Vector3 targetPos;
     private float lerpProgress;
     private bool isMoving;
-
-    private Vector2 lastInput = Vector2.right;
-    private Vector2 currentInput = Vector2.right;
     private Vector2Int currentGridPos;
-
     private float teleportCooldown = 0f;
 
-    private Vector3 initialSpawn;
+    // 输入缓存
+    private Vector2 lastInput = Vector2.right;
+    private Vector2 currentInput = Vector2.right;
+
+    private Vector3 initialSpawn = new Vector3(1f, -1f, 0f); // 左上角起点
 
     private void Start()
     {
-        initialSpawn = transform.position;
         ResetToStart();
     }
 
@@ -46,16 +45,18 @@ public class PacStudentController : MonoBehaviour
         lastInput = Vector2.right;
         currentInput = Vector2.right;
         UpdateAnimator(Vector2.right);
+
         if (dustEffect != null) dustEffect.Stop();
         if (moveAudioSource != null) moveAudioSource.Stop();
     }
 
     private void Update()
     {
-        if (!GameManager.Instance.IsGameActive) return;
+        if (GameManager.Instance == null || !GameManager.Instance.IsGameActive) return;
 
         if (teleportCooldown > 0f) teleportCooldown -= Time.deltaTime;
 
+        // 1. 获取输入
         Vector2 input = Vector2.zero;
         if (Input.GetKey(KeyCode.W)) input = Vector2.up;
         else if (Input.GetKey(KeyCode.S)) input = Vector2.down;
@@ -64,6 +65,7 @@ public class PacStudentController : MonoBehaviour
 
         if (input != Vector2.zero) lastInput = input;
 
+        // 2. 移动逻辑
         if (!isMoving)
         {
             if (IsWalkable(lastInput))
@@ -106,10 +108,13 @@ public class PacStudentController : MonoBehaviour
     {
         if (dir == Vector2.zero) return false;
         Vector2Int nextGrid = currentGridPos + Vector2Int.RoundToInt(dir);
-        if (nextGrid.x < minGridPos.x || nextGrid.x > maxGridPos.x) return true; // 出界=隧道
+
+        // 边界检查（允许出界以进入隧道）
+        if (nextGrid.x < minGridPos.x || nextGrid.x > maxGridPos.x) return true;
         if (nextGrid.y < minGridPos.y || nextGrid.y > maxGridPos.y) return false;
 
         Vector2 worldPos = new Vector2(nextGrid.x, nextGrid.y);
+        // 检测是否碰到墙壁
         return !Physics2D.OverlapCircle(worldPos, 0.3f, wallLayer);
     }
 
@@ -133,7 +138,6 @@ public class PacStudentController : MonoBehaviour
         else if (dir == Vector2.down) animator.Play("WalkDown");
     }
 
-    // ============ 碰撞 ============
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (GameManager.Instance == null) return;
@@ -156,6 +160,7 @@ public class PacStudentController : MonoBehaviour
         }
         else if (other.CompareTag("TunnelLeft") && teleportCooldown <= 0f)
         {
+            // 从左侧出界，传送到右侧
             transform.position = new Vector3(maxGridPos.x + 0.5f, transform.position.y, 0f);
             startPos = targetPos = transform.position;
             currentGridPos = new Vector2Int(maxGridPos.x, currentGridPos.y);
@@ -163,6 +168,7 @@ public class PacStudentController : MonoBehaviour
         }
         else if (other.CompareTag("TunnelRight") && teleportCooldown <= 0f)
         {
+            // 从右侧出界，传送到左侧
             transform.position = new Vector3(minGridPos.x - 0.5f, transform.position.y, 0f);
             startPos = targetPos = transform.position;
             currentGridPos = new Vector2Int(minGridPos.x, currentGridPos.y);
@@ -172,20 +178,6 @@ public class PacStudentController : MonoBehaviour
         {
             var ghost = other.GetComponent<GhostController>();
             if (ghost != null) ghost.OnPlayerCollide();
-        }
-    }
-
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        if (((1 << collision.gameObject.layer) & wallLayer) != 0)
-        {
-            if (isMoving)
-            {
-                transform.position = startPos;
-                isMoving = false;
-                lerpProgress = 0f;
-                GameManager.Instance?.OnWallHit();
-            }
         }
     }
 }
