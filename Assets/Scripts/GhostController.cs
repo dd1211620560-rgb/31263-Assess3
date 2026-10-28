@@ -4,29 +4,23 @@ public class GhostController : MonoBehaviour
 {
     public enum GhostState { Normal, Scared, Recovering, Dead }
 
-    [SerializeField] private int ghostID; // 1..4
+    [SerializeField] private int ghostID;
     [SerializeField] private Animator animator;
     [SerializeField] private Vector3 spawnPosition;
 
     public GhostState CurrentState { get; private set; } = GhostState.Normal;
-    public int GhostID => ghostID;
 
     private void Awake()
     {
         if (animator == null) animator = GetComponent<Animator>();
+        if (spawnPosition == Vector3.zero) spawnPosition = transform.position;
     }
 
     public void SetState(GhostState state)
     {
         if (CurrentState == GhostState.Dead && state != GhostState.Dead) return;
         CurrentState = state;
-        UpdateAnimatorState();
-    }
-
-    private void UpdateAnimatorState()
-    {
-        if (animator == null) return;
-        animator.SetInteger("GhostState", (int)CurrentState);
+        if (animator != null) animator.SetInteger("GhostState", (int)CurrentState);
     }
 
     public void OnPlayerCollide()

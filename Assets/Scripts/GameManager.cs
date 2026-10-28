@@ -13,7 +13,6 @@ public class GameManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI gameTimerText;
     [SerializeField] private TextMeshProUGUI scaredTimerText;
-    [SerializeField] private TextMeshProUGUI levelNameText;
 
     [Header("HUD - Lives")]
     [SerializeField] private Transform livesContainer;
@@ -24,37 +23,27 @@ public class GameManager : MonoBehaviour
     [SerializeField] private GameObject screenMask;
     [SerializeField] private TextMeshProUGUI countdownText;
 
-    [Header("Audio Clips")]
+    [Header("Audio")]
+    [SerializeField] private AudioSource bgmSource;
+    [SerializeField] private AudioSource sfxSource;
     [SerializeField] private AudioClip pelletSFX;
-    [SerializeField] private AudioClip powerPelletSFX;
     [SerializeField] private AudioClip cherrySFX;
-    [SerializeField] private AudioClip wallHitSFX;
+    [SerializeField] private AudioClip powerPelletSFX;
     [SerializeField] private AudioClip ghostEatSFX;
     [SerializeField] private AudioClip deathSFX;
     [SerializeField] private AudioClip introMusic;
     [SerializeField] private AudioClip ghostNormalMusic;
     [SerializeField] private AudioClip ghostScaredMusic;
-    [SerializeField] private AudioClip ghostDeadMusic;
 
-    [Header("Audio Sources")]
-    [SerializeField] private AudioSource bgmSource;
-    [SerializeField] private AudioSource sfxSource;
-
-    [Header("Ghost References")]
+    [Header("Ghosts")]
     [SerializeField] private List<GhostController> ghosts;
 
-    // 运行状态
     private int score = 0;
     private int lives;
     private float gameTime = 0f;
     private bool isGameActive = false;
-
     private bool isScaredTimerActive = false;
     private float scaredTimer = 0f;
-    private const float ScaredDuration = 10f;
-    private const float RecoveringThreshold = 3f;
-
-    private bool isDeadGhostPlaying = false;
 
     private void Awake()
     {
@@ -67,10 +56,7 @@ public class GameManager : MonoBehaviour
         lives = startingLives;
         UpdateScoreUI();
         UpdateLivesUI();
-        UpdateTimerUI();
-        if (levelNameText != null) levelNameText.text = "Level 1";
         if (scaredTimerText != null) scaredTimerText.gameObject.SetActive(false);
-
         StartCoroutine(RoundStartSequence());
     }
 
@@ -90,9 +76,8 @@ public class GameManager : MonoBehaviour
                 scaredTimerText.text = Mathf.CeilToInt(Mathf.Max(0f, scaredTimer)).ToString();
             }
 
-            if (scaredTimer <= RecoveringThreshold && scaredTimer > 0f)
+            if (scaredTimer <= 3f && scaredTimer > 0f)
             {
-                // 进入 Recovering
                 foreach (var g in ghosts)
                     if (g != null && g.CurrentState == GhostController.GhostState.Scared)
                         g.SetState(GhostController.GhostState.Recovering);
@@ -104,12 +89,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // ============ 倒计时 ============
     private IEnumerator RoundStartSequence()
     {
         isGameActive = false;
-        DisablePlayerAndGhosts(true);
-
         if (screenMask != null) screenMask.SetActive(true);
         if (countdownText != null) countdownText.gameObject.SetActive(true);
 
@@ -131,7 +113,6 @@ public class GameManager : MonoBehaviour
         if (countdownText != null) countdownText.gameObject.SetActive(false);
 
         isGameActive = true;
-        DisablePlayerAndGhosts(false);
 
         if (bgmSource != null && ghostNormalMusic != null)
         {
@@ -141,15 +122,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private void DisablePlayerAndGhosts(bool disabled)
-    {
-        var player = FindObjectOfType<PacStudentController>();
-        if (player != null) player.enabled = !disabled;
-        foreach (var g in ghosts)
-            if (g != null) g.enabled = !disabled;
-    }
-
-    // ============ UI 更新 ============
     public void AddScore(int amount)
     {
         score += amount;
@@ -181,22 +153,20 @@ public class GameManager : MonoBehaviour
         gameTimerText.text = $"{m:00}:{s:00}:{ms:000}";
     }
 
-    // ============ 吃豆子/樱桃/能量豆 ============
     public void OnPelletEaten() { PlaySFX(pelletSFX); AddScore(10); }
     public void OnCherryEaten() { PlaySFX(cherrySFX); AddScore(100); }
-    public void OnWallHit() { PlaySFX(wallHitSFX); }
 
     public void OnPowerPelletEaten()
     {
         PlaySFX(powerPelletSFX);
         AddScore(50);
-
         isScaredTimerActive = true;
-        scaredTimer = ScaredDuration;
+        scaredTimer = 10f;
+
         if (scaredTimerText != null)
         {
             scaredTimerText.gameObject.SetActive(true);
-            scaredTimerText.text = Mathf.CeilToInt(ScaredDuration).ToString();
+            scaredTimerText.text = "10";
         }
 
         foreach (var g in ghosts)
@@ -215,15 +185,6 @@ public class GameManager : MonoBehaviour
     {
         AddScore(300);
         PlaySFX(ghostEatSFX);
-
-        // 如果还有别的死鬼，继续播 dead 音乐
-        if (bgmSource != null && ghostDeadMusic != null)
-        {
-            bgmSource.clip = ghostDeadMusic;
-            bgmSource.loop = true;
-            bgmSource.Play();
-            isDeadGhostPlaying = true;
-        }
     }
 
     private void EndScaredState()
@@ -235,7 +196,7 @@ public class GameManager : MonoBehaviour
             if (g != null && g.CurrentState != GhostController.GhostState.Dead)
                 g.SetState(GhostController.GhostState.Normal);
 
-        if (!isDeadGhostPlaying && bgmSource != null && ghostNormalMusic != null)
+        if (bgmSource != null && ghostNormalMusic != null)
         {
             bgmSource.clip = ghostNormalMusic;
             bgmSource.loop = true;
@@ -243,7 +204,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // ============ 玩家死亡 ============
     public void OnPacStudentCaught()
     {
         if (!isGameActive) return;
@@ -256,14 +216,10 @@ public class GameManager : MonoBehaviour
         PlaySFX(deathSFX);
         if (bgmSource != null) bgmSource.Stop();
 
-        // 停掉移动
         var player = FindObjectOfType<PacStudentController>();
-        if (player != null) player.enabled = false;
-        foreach (var g in ghosts) if (g != null) g.enabled = false;
-
-        // 播放死亡动画（PacStudent 的 Animator 有 Dead 状态）
         if (player != null)
         {
+            player.enabled = false;
             var anim = player.GetComponent<Animator>();
             if (anim != null) anim.Play("Dead");
         }
@@ -279,7 +235,6 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
-        // 复位
         if (player != null)
         {
             player.ResetToStart();
@@ -296,13 +251,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // ============ Game Over ============
-    public IEnumerator GameOverSequence()
+    private IEnumerator GameOverSequence()
     {
-        isGameActive = false;
-
         if (bgmSource != null) bgmSource.Stop();
-
         SaveHighScore();
 
         if (screenMask != null) screenMask.SetActive(true);
@@ -313,7 +264,6 @@ public class GameManager : MonoBehaviour
         }
 
         yield return new WaitForSeconds(3f);
-
         SceneManager.LoadScene("StartScene");
     }
 
@@ -321,11 +271,7 @@ public class GameManager : MonoBehaviour
     {
         int prevHigh = PlayerPrefs.GetInt("HighScore", 0);
         float prevTime = PlayerPrefs.GetFloat("BestTime", 0f);
-
-        bool newHigh = score > prevHigh;
-        bool sameScoreFaster = score == prevHigh && (prevTime <= 0f || gameTime < prevTime);
-
-        if (newHigh || sameScoreFaster)
+        if (score > prevHigh || (score == prevHigh && (prevTime <= 0f || gameTime < prevTime)))
         {
             PlayerPrefs.SetInt("HighScore", score);
             PlayerPrefs.SetFloat("BestTime", gameTime);
@@ -333,13 +279,11 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // ============ 工具 ============
     private void PlaySFX(AudioClip clip)
     {
         if (clip != null && sfxSource != null) sfxSource.PlayOneShot(clip);
     }
 
     public void ExitToMenu() => SceneManager.LoadScene("StartScene");
-
     public bool IsGameActive => isGameActive;
 }

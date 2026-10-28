@@ -1,4 +1,3 @@
-using System.Collections;
 using UnityEngine;
 
 public class CherryController : MonoBehaviour
@@ -6,11 +5,11 @@ public class CherryController : MonoBehaviour
     [SerializeField] private GameObject cherryPrefab;
     [SerializeField] private float spawnDelay = 5f;
     [SerializeField] private float moveSpeed = 4f;
-    [SerializeField] private Vector2 minBounds = new Vector2(-13f, -14f);
-    [SerializeField] private Vector2 maxBounds = new Vector2(13f, 14f);
+    [SerializeField] private Vector2 minBounds = new Vector2(0f, -28f);
+    [SerializeField] private Vector2 maxBounds = new Vector2(27f, 0f);
 
     private GameObject currentCherry;
-    private Vector3 startPos, targetPos;
+    private Vector3 targetPos;
     private bool isMoving;
     private float timer;
 
@@ -50,26 +49,25 @@ public class CherryController : MonoBehaviour
     private void SpawnCherry()
     {
         int side = Random.Range(0, 4);
-        float cx = (minBounds.x + maxBounds.x) * 0.5f;
-        float cy = (minBounds.y + maxBounds.y) * 0.5f;
+        Vector3 startPos = Vector3.zero;
 
         switch (side)
         {
-            case 0: // 从上方
-                startPos = new Vector3(Random.Range(minBounds.x, maxBounds.x), maxBounds.y + 1f, 0);
-                targetPos = new Vector3(startPos.x, minBounds.y - 1f, 0);
+            case 0: // 上方
+                startPos = new Vector3(Random.Range(minBounds.x, maxBounds.x), maxBounds.y + 2f, 0);
+                targetPos = new Vector3(startPos.x, minBounds.y - 2f, 0);
                 break;
             case 1: // 下方
-                startPos = new Vector3(Random.Range(minBounds.x, maxBounds.x), minBounds.y - 1f, 0);
-                targetPos = new Vector3(startPos.x, maxBounds.y + 1f, 0);
+                startPos = new Vector3(Random.Range(minBounds.x, maxBounds.x), minBounds.y - 2f, 0);
+                targetPos = new Vector3(startPos.x, maxBounds.y + 2f, 0);
                 break;
             case 2: // 左方
-                startPos = new Vector3(minBounds.x - 1f, Random.Range(minBounds.y, maxBounds.y), 0);
-                targetPos = new Vector3(maxBounds.x + 1f, startPos.y, 0);
+                startPos = new Vector3(minBounds.x - 2f, Random.Range(minBounds.y, maxBounds.y), 0);
+                targetPos = new Vector3(maxBounds.x + 2f, startPos.y, 0);
                 break;
             default: // 右方
-                startPos = new Vector3(maxBounds.x + 1f, Random.Range(minBounds.y, maxBounds.y), 0);
-                targetPos = new Vector3(minBounds.x - 1f, startPos.y, 0);
+                startPos = new Vector3(maxBounds.x + 2f, Random.Range(minBounds.y, maxBounds.y), 0);
+                targetPos = new Vector3(minBounds.x - 2f, startPos.y, 0);
                 break;
         }
 
